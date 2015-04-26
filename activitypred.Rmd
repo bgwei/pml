@@ -1,0 +1,36 @@
+---
+title: "Activity Patterns"
+author: "Bruce Wei"
+date: "Saturday, April 25, 2015"
+output: html_document
+---
+## Summary
+A random forest model was created based on human activity recognition data from [Groupware](http://groupware.les.inf.puc-rio.br/har) to predict the type of activity being performed based on 52 numeric variables.
+## Loading and Preprocessing Data
+The following code was used to load the training dataset. The first seven variables are removed because they were deemed irrelevant to predicting activity type (for example, things like subject name and timestamp). All non-numeric variables and variables containing NA values for measurements were also removed.
+
+```{r loaddata}
+train <- read.csv("pml-training.csv")
+train <- train[,-(1:7)]
+classe <- train$classe
+numeric_columns <- sapply(train,is.numeric)
+train <- train[numeric_columns]
+train <- train[,colSums(is.na(train)) == 0]
+train$classe <- classe
+```
+## Model Generation and Cross-Validation
+The data was randomly split with 75% of data used for training the model and 25% reserved for cross-validation afterwards. The caret package was used to generate a random forest model for predicting activity type based on the other 52 variables in the processed dataset. 
+```{r set setup}
+set.seed(42)
+library(caret)
+inTrain <- createDataPartition(y=train$classe,p=0.75,list=FALSE)
+training <- train[inTrain,]
+testing <- train[-inTrain,]
+tc = trainControl(method = "cv", number = 5)
+modelFit <- train(training$classe ~.,data = training, method="rf", trControl = tc)
+modelFit
+predictions <- predict(modelFit,newdata=testing)
+errorestimate <- 1 - sum(predictions == testing$classe)/nrow(testing)
+errorestimate
+```
+The model was then used to predict activity type for the reserved testing dataset, and the accuracy of the predictions were used to estimate out-of-sample error, which turned out to be approximately `r errorestimate`.
